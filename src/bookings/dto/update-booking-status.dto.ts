@@ -1,0 +1,11 @@
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { BookingStatus } from '@prisma/client';
+
+export class UpdateBookingStatusDto {
+  @IsEnum(BookingStatus, { message: 'Status booking tidak valid' })
+  status!: BookingStatus;
+
+  @IsOptional()
+  @IsString()
+  provider_id?: string;
+}
