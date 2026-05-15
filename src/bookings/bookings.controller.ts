@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  HttpCode,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -17,11 +18,20 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { GetUser } from '../common/decorators/get-user.decorator';
 import { Role } from '@prisma/client';
+import { Public } from '../auth/decorators/public.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
+
+  // ── PUBLIC: Midtrans webhook (tidak butuh JWT) ──
+  @Public()
+  @Post('webhook/midtrans')
+  @HttpCode(200)
+  handleMidtransWebhook(@Body() payload: any) {
+    return this.bookingsService.handleMidtransWebhook(payload);
+  }
 
   @Roles(Role.CUSTOMER)
   @Post()
