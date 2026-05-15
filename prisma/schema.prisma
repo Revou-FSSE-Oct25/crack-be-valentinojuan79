@@ -80,7 +80,7 @@ model Booking {
   address     String?
   province    String?
   city        String?
-  proof_url   String?       // Bukti pengerjaan dari teknisi (URL gambar)
+  proof_url   String?
   user_id     String
   user        User          @relation("UserBookings", fields: [user_id], references: [id])
   services_id String
@@ -92,21 +92,28 @@ model Booking {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  method        String
-  status        PaymentStatus @default(PENDING)
-  amount_to_pay Float
-  booking_id    String        @unique
-  booking       Booking       @relation(fields: [booking_id], references: [id])
+  id               String        @id @default(cuid())
+  method           String        // 'TUNAI' | 'VA_BCA' | 'VA_BNI' | 'VA_BRI' | 'VA_MANDIRI' | 'QRIS' | 'GOPAY' | 'OVO'
+  status           PaymentStatus @default(PENDING)
+  amount_to_pay    Float
+  booking_id       String        @unique
+  booking          Booking       @relation(fields: [booking_id], references: [id])
+  gateway_order_id String?       @unique  // 
+  snap_token       String?               
+  payment_url      String?               
+  va_number        String?               
+  qr_url           String?               
+  paid_at          DateTime?             
+  expired_at       DateTime?             
 }
 
 model Review {
-  id           String   @id @default(cuid())
-  rating       Int      // 1-5
-  comment      String?
-  booking_id   String   @unique
-  booking      Booking  @relation(fields: [booking_id], references: [id])
+  id            String   @id @default(cuid())
+  rating        Int      // 1-5
+  comment       String?
+  booking_id    String   @unique
+  booking       Booking  @relation(fields: [booking_id], references: [id])
   technician_id String
-  technician   User     @relation("TechnicianReviews", fields: [technician_id], references: [id])
-  createdAt    DateTime @default(now())
+  technician    User     @relation("TechnicianReviews", fields: [technician_id], references: [id])
+  createdAt     DateTime @default(now())
 }

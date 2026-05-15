@@ -80,7 +80,4 @@ export class ReviewsService {
     return { message: 'Rating teknisi berhasil diambil', data: result };
   }
 
-  async getTechniciansForAssign() {
-    return this.getTechnicianRatings();
-  }
 }

@@ -74,12 +74,6 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, dto);
   }
 
-  /**
-   * PATCH /bookings/:id/progress
-   * Body: { status, proof_url?, cash_confirmed? }
-   * - status ON_PROGRESS: mulai kerjakan
-   * - status COMPLETED: wajib proof_url, jika tunai wajib cash_confirmed: true
-   */
   @Roles(Role.TECHNICIAN)
   @Patch(':id/progress')
   updateTaskStatus(

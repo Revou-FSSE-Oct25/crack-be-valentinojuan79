@@ -217,82 +217,79 @@ export class BookingsService {
    *  - Jika sudah konfirmasi, payment langsung SUCCESS
    */
   async updateTaskStatus(
-    bookingId: string,
-    technicianId: string,
-    status: 'ON_PROGRESS' | 'COMPLETED',
-    proofUrl?: string,
-    cashConfirmed?: boolean,
-  ) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: { payment: true },
-    });
+  bookingId: string,
+  technicianId: string,
+  status: 'ON_PROGRESS' | 'COMPLETED',
+  proofUrl?: string,
+  cashConfirmed?: boolean,
+) {
+  const booking = await this.prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { payment: true },
+  });
 
-    if (!booking) {
-      throw new NotFoundException('Booking tidak ditemukan');
+  if (!booking) throw new NotFoundException('Booking tidak ditemukan');
+  if (booking.provider_id !== technicianId) throw new ForbiddenException('Booking ini tidak di-assign ke kamu');
+  if (!['CONFIRMED', 'ON_PROGRESS'].includes(booking.status)) {
+    throw new BadRequestException(`Tidak bisa mengubah status dari ${booking.status}`);
+  }
+
+  if (status === 'COMPLETED') {
+    if (!proofUrl) {
+      throw new BadRequestException('Bukti pengerjaan (proof_url) wajib dikirim saat menandai selesai');
     }
 
-    if (booking.provider_id !== technicianId) {
-      throw new ForbiddenException('Booking ini tidak di-assign ke kamu');
-    }
+    const method = booking.payment?.method?.toUpperCase() || '';
+    const isCash = method === 'TUNAI' || method === 'CASH';
 
-    if (!['CONFIRMED', 'ON_PROGRESS'].includes(booking.status)) {
-      throw new BadRequestException(`Tidak bisa mengubah status dari ${booking.status}`);
-    }
-
-    if (status === 'COMPLETED') {
-      if (!proofUrl) {
-        throw new BadRequestException('Bukti pengerjaan (proof_url) wajib dikirim saat menandai selesai');
-      }
-
-      const isCash = booking.payment?.method?.toLowerCase() === 'tunai' ||
-                     booking.payment?.method?.toLowerCase() === 'cash';
-
-      if (isCash && !cashConfirmed) {
+    if (isCash) {
+      // ── TUNAI: teknisi wajib centang konfirmasi ──
+      if (!cashConfirmed) {
         throw new BadRequestException(
           'Untuk pembayaran tunai, konfirmasi bahwa customer sudah membayar (cash_confirmed: true)',
         );
       }
-
-      // Update booking status + proof
-      const updated = await this.prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: 'COMPLETED', proof_url: proofUrl },
-        include: this.bookingInclude,
-      });
-
-      // Jika tunai dan dikonfirmasi, langsung set payment SUCCESS
-      if (isCash && cashConfirmed && booking.payment) {
-        await this.prisma.payment.update({
-          where: { id: booking.payment.id },
-          data: { status: 'SUCCESS' },
-        });
+    } else {
+      // ── GATEWAY: payment harus sudah SUCCESS dari webhook Midtrans ──
+      if (booking.payment?.status !== 'SUCCESS') {
+        throw new BadRequestException(
+          'Pembayaran belum dikonfirmasi oleh sistem. Minta customer untuk menyelesaikan pembayaran terlebih dahulu.',
+        );
       }
-
-      // Reload dengan data payment terbaru
-      const final = await this.prisma.booking.findUnique({
-        where: { id: bookingId },
-        include: this.bookingInclude,
-      });
-
-      return {
-        message: 'Tugas ditandai selesai',
-        data: final,
-      };
     }
 
-    // ON_PROGRESS
-    const updated = await this.prisma.booking.update({
+    // Update booking status + bukti foto
+    await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status },
+      data: { status: 'COMPLETED', proof_url: proofUrl },
+    });
+
+    // Kalau tunai & dikonfirmasi → set payment SUCCESS
+    if (isCash && cashConfirmed && booking.payment) {
+      await this.prisma.payment.update({
+        where: { id: booking.payment.id },
+        data: { status: 'SUCCESS' },
+      });
+    }
+
+    // Return data terbaru
+    const final = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
       include: this.bookingInclude,
     });
 
-    return {
-      message: 'Status tugas berhasil diperbarui',
-      data: updated,
-    };
+    return { message: 'Tugas ditandai selesai', data: final };
   }
+
+  // ── ON_PROGRESS ──
+  const updated = await this.prisma.booking.update({
+    where: { id: bookingId },
+    data: { status },
+    include: this.bookingInclude,
+  });
+
+  return { message: 'Status tugas berhasil diperbarui', data: updated };
+}
 
   async cancelBooking(id: string, userId: string) {
     const booking = await this.prisma.booking.findUnique({ where: { id } });

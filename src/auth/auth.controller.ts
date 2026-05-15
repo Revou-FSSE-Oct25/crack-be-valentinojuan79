@@ -24,7 +24,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getProfile(@Request() req) {
-    // req.user diisi otomatis oleh JwtStrategy setelah validasi token sukses
     return req.user;
   }
 }

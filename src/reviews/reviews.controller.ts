@@ -12,7 +12,6 @@ import { Role } from '@prisma/client';
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  /** POST /reviews/:bookingId — customer submit ulasan */
   @Roles(Role.CUSTOMER)
   @Post(':bookingId')
   createReview(
@@ -23,7 +22,6 @@ export class ReviewsController {
     return this.reviewsService.createReview(userId, bookingId, dto);
   }
 
-  /** GET /reviews/technicians — admin lihat rating semua teknisi (sorted) */
   @Roles(Role.ADMIN)
   @Get('technicians')
   getTechnicianRatings() {
