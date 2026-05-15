@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,13 +14,24 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,         // strip properti yang tidak ada di DTO
-      forbidNonWhitelisted: true, // error kalau ada properti asing
-      transform: true,         // auto-transform tipe data (misal string ke number)
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Server running on port ${process.env.PORT ?? 3000}`);
+  const config = new DocumentBuilder()
+    .setTitle('Solvio API')
+    .setDescription('API documentation for Solvio backend')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api-docs', app, document); 
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
 }
 bootstrap();

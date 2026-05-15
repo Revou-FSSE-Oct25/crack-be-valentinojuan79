@@ -19,14 +19,17 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { GetUser } from '../common/decorators/get-user.decorator';
 import { Role } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Bookings')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
-  // ── PUBLIC: Midtrans webhook (tidak butuh JWT) ──
   @Public()
+  @ApiOperation({ summary: 'Handle Midtrans payment webhook' })
   @Post('webhook/midtrans')
   @HttpCode(200)
   handleMidtransWebhook(@Body() payload: any) {
@@ -34,6 +37,7 @@ export class BookingsController {
   }
 
   @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: 'Create a new booking' })
   @Post()
   create(
     @GetUser('userId') userId: string,
@@ -43,12 +47,14 @@ export class BookingsController {
   }
 
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Find all bookings' })
   @Get()
   findAll(@Query('status') status?: string) {
     return this.bookingsService.findAll(status);
   }
 
   @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: 'Find my bookings' })
   @Get('my')
   findMyBookings(
     @GetUser('userId') userId: string,
@@ -58,6 +64,7 @@ export class BookingsController {
   }
 
   @Roles(Role.TECHNICIAN)
+  @ApiOperation({ summary: 'Find my tasks' })
   @Get('tasks')
   findMyTasks(
     @GetUser('userId') technicianId: string,
@@ -66,6 +73,7 @@ export class BookingsController {
     return this.bookingsService.findMyTasks(technicianId, status);
   }
 
+  @ApiOperation({ summary: 'Get booking details' })
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -75,7 +83,9 @@ export class BookingsController {
     return this.bookingsService.findOne(id, userId, userRole);
   }
 
+
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update booking status' })
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
@@ -85,27 +95,32 @@ export class BookingsController {
   }
 
   @Roles(Role.TECHNICIAN)
+  @ApiOperation({ summary: 'Update task status (ON_PROGRESS or COMPLETED)' })
   @Patch(':id/progress')
   updateTaskStatus(
     @Param('id') bookingId: string,
     @GetUser('userId') technicianId: string,
-    @Body('status') status: string,
-    @Body('proof_url') proofUrl?: string,
-    @Body('cash_confirmed') cashConfirmed?: boolean,
+    @Body() body: { status: string; proof_url?: string; cash_confirmed?: boolean },
   ) {
+    const { status, proof_url, cash_confirmed } = body;
+
     if (!['ON_PROGRESS', 'COMPLETED'].includes(status)) {
       throw new BadRequestException('Status harus ON_PROGRESS atau COMPLETED');
     }
+
+    const cashConfirmed = cash_confirmed === true || (cash_confirmed as any) === 'true';
+
     return this.bookingsService.updateTaskStatus(
       bookingId,
       technicianId,
       status as 'ON_PROGRESS' | 'COMPLETED',
-      proofUrl,
+      proof_url,
       cashConfirmed,
     );
   }
 
   @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: 'Cancel a booking' })
   @Patch(':id/cancel')
   cancelBooking(
     @Param('id') id: string,
