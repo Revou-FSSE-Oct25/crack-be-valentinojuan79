@@ -292,6 +292,7 @@ The API uses JWT-based authentication with role-based access control (RBAC).
 
 - **Backend API**: (https://crack-be-valentinojuan79.onrender.com)
 - **API Documentation**: (https://crack-be-valentinojuan79.onrender.com/api-docs)
+- **Diagram**: (https://dbdiagram.io/d/6a0712f0697f99c16781efae)
 
 ## 📦 Project Structure
 
