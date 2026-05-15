@@ -42,6 +42,7 @@ export class BookingsService {
       },
     },
     payment: true,
+    review: true,
   };
 
   async create(userId: string, dto: CreateBookingDto) {
@@ -59,7 +60,6 @@ export class BookingsService {
       throw new BadRequestException('Jadwal harus di masa depan');
     }
 
-    // Jika service punya variant, variant_id wajib dikirim
     let finalPrice = service.price;
     if (service.variants.length > 0) {
       if (!dto.variant_id) {
@@ -88,7 +88,6 @@ export class BookingsService {
       include: this.bookingInclude,
     });
 
-    // Langsung buat payment record dengan status PENDING
     await this.prisma.payment.create({
       data: {
         booking_id: booking.id,
@@ -98,7 +97,6 @@ export class BookingsService {
       },
     });
 
-    // Reload booking dengan payment
     const bookingWithPayment = await this.prisma.booking.findUnique({
       where: { id: booking.id },
       include: this.bookingInclude,
@@ -211,9 +209,23 @@ export class BookingsService {
     };
   }
 
-  async updateTaskStatus(bookingId: string, technicianId: string, status: 'ON_PROGRESS' | 'COMPLETED') {
+  /**
+   * Teknisi update status ke ON_PROGRESS atau COMPLETED.
+   * Saat COMPLETED:
+   *  - proof_url wajib dikirim
+   *  - Jika metode pembayaran TUNAI, konfirmasi bahwa customer sudah bayar
+   *  - Jika sudah konfirmasi, payment langsung SUCCESS
+   */
+  async updateTaskStatus(
+    bookingId: string,
+    technicianId: string,
+    status: 'ON_PROGRESS' | 'COMPLETED',
+    proofUrl?: string,
+    cashConfirmed?: boolean,
+  ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
+      include: { payment: true },
     });
 
     if (!booking) {
@@ -228,6 +240,48 @@ export class BookingsService {
       throw new BadRequestException(`Tidak bisa mengubah status dari ${booking.status}`);
     }
 
+    if (status === 'COMPLETED') {
+      if (!proofUrl) {
+        throw new BadRequestException('Bukti pengerjaan (proof_url) wajib dikirim saat menandai selesai');
+      }
+
+      const isCash = booking.payment?.method?.toLowerCase() === 'tunai' ||
+                     booking.payment?.method?.toLowerCase() === 'cash';
+
+      if (isCash && !cashConfirmed) {
+        throw new BadRequestException(
+          'Untuk pembayaran tunai, konfirmasi bahwa customer sudah membayar (cash_confirmed: true)',
+        );
+      }
+
+      // Update booking status + proof
+      const updated = await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'COMPLETED', proof_url: proofUrl },
+        include: this.bookingInclude,
+      });
+
+      // Jika tunai dan dikonfirmasi, langsung set payment SUCCESS
+      if (isCash && cashConfirmed && booking.payment) {
+        await this.prisma.payment.update({
+          where: { id: booking.payment.id },
+          data: { status: 'SUCCESS' },
+        });
+      }
+
+      // Reload dengan data payment terbaru
+      const final = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: this.bookingInclude,
+      });
+
+      return {
+        message: 'Tugas ditandai selesai',
+        data: final,
+      };
+    }
+
+    // ON_PROGRESS
     const updated = await this.prisma.booking.update({
       where: { id: bookingId },
       data: { status },

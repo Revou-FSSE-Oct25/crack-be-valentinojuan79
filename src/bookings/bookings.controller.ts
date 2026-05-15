@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
   Param,
   Body,
   Query,
@@ -75,17 +74,31 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, dto);
   }
 
+  /**
+   * PATCH /bookings/:id/progress
+   * Body: { status, proof_url?, cash_confirmed? }
+   * - status ON_PROGRESS: mulai kerjakan
+   * - status COMPLETED: wajib proof_url, jika tunai wajib cash_confirmed: true
+   */
   @Roles(Role.TECHNICIAN)
   @Patch(':id/progress')
   updateTaskStatus(
     @Param('id') bookingId: string,
     @GetUser('userId') technicianId: string,
     @Body('status') status: string,
+    @Body('proof_url') proofUrl?: string,
+    @Body('cash_confirmed') cashConfirmed?: boolean,
   ) {
     if (!['ON_PROGRESS', 'COMPLETED'].includes(status)) {
       throw new BadRequestException('Status harus ON_PROGRESS atau COMPLETED');
     }
-    return this.bookingsService.updateTaskStatus(bookingId, technicianId, status as 'ON_PROGRESS' | 'COMPLETED');
+    return this.bookingsService.updateTaskStatus(
+      bookingId,
+      technicianId,
+      status as 'ON_PROGRESS' | 'COMPLETED',
+      proofUrl,
+      cashConfirmed,
+    );
   }
 
   @Roles(Role.CUSTOMER)
@@ -96,5 +109,4 @@ export class BookingsController {
   ) {
     return this.bookingsService.cancelBooking(id, userId);
   }
-
 }

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
 }
 
 // --- ENUMS ---
@@ -38,61 +38,75 @@ model User {
   address       String?
   province      String?
   city          String?
-  id_number     String?   
+  id_number     String?
   id_photo      String?
-  specialities  String?   
+  specialities  String?
   role          Role      @default(CUSTOMER)
   createdAt     DateTime  @default(now())
   bookings      Booking[] @relation("UserBookings")
   assignedTasks Booking[] @relation("ProviderTasks")
+  reviews       Review[]  @relation("TechnicianReviews")
 }
 
 model Category {
-  id            String    @id @default(cuid())
-  category_name String    @unique
+  id            String     @id @default(cuid())
+  category_name String     @unique
   services      Services[]
 }
 
 model Services {
-  id            String    @id @default(cuid())
+  id            String           @id @default(cuid())
   services_name String
   price         Float
   category_id   String
-  category      Category  @relation(fields: [category_id], references: [id])
+  category      Category         @relation(fields: [category_id], references: [id])
   bookings      Booking[]
   variants      ServiceVariant[]
 }
 
 model ServiceVariant {
   id           String   @id @default(cuid())
-  variant_name String   
+  variant_name String
   price        Float
   service_id   String
   service      Services @relation(fields: [service_id], references: [id], onDelete: Cascade)
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  status        BookingStatus @default(PENDING)
-  schedule      DateTime      
-  total_price   Float
-  address       String?
-  province      String?
-  city          String?
-  user_id       String
-  user          User          @relation("UserBookings", fields: [user_id], references: [id])
-  services_id   String
-  services      Services      @relation(fields: [services_id], references: [id])
-  provider_id   String?
-  provider      User?         @relation("ProviderTasks", fields: [provider_id], references: [id])
-  payment       Payment?
+  id          String        @id @default(cuid())
+  status      BookingStatus @default(PENDING)
+  schedule    DateTime
+  total_price Float
+  address     String?
+  province    String?
+  city        String?
+  proof_url   String?       // Bukti pengerjaan dari teknisi (URL gambar)
+  user_id     String
+  user        User          @relation("UserBookings", fields: [user_id], references: [id])
+  services_id String
+  services    Services      @relation(fields: [services_id], references: [id])
+  provider_id String?
+  provider    User?         @relation("ProviderTasks", fields: [provider_id], references: [id])
+  payment     Payment?
+  review      Review?
 }
 
 model Payment {
   id            String        @id @default(cuid())
-  method        String        
+  method        String
   status        PaymentStatus @default(PENDING)
   amount_to_pay Float
   booking_id    String        @unique
   booking       Booking       @relation(fields: [booking_id], references: [id])
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  rating       Int      // 1-5
+  comment      String?
+  booking_id   String   @unique
+  booking      Booking  @relation(fields: [booking_id], references: [id])
+  technician_id String
+  technician   User     @relation("TechnicianReviews", fields: [technician_id], references: [id])
+  createdAt    DateTime @default(now())
 }
