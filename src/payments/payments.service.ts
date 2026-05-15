@@ -24,19 +24,16 @@ export class PaymentsService {
       throw new NotFoundException('Booking tidak ditemukan');
     }
 
-    // Customer hanya bisa bayar booking milik sendiri
     if (booking.user_id !== userId) {
       throw new ForbiddenException('Kamu tidak punya akses ke booking ini');
     }
 
-    // Booking harus sudah CONFIRMED sebelum bisa dibayar
     if (booking.status !== 'CONFIRMED') {
       throw new BadRequestException(
         'Pembayaran hanya bisa dilakukan untuk booking dengan status CONFIRMED',
       );
     }
 
-    // Cek payment sudah ada
     if (booking.payment) {
       throw new ConflictException('Booking ini sudah memiliki data pembayaran');
     }
@@ -142,7 +139,6 @@ export class PaymentsService {
     };
   }
 
-  // Admin: konfirmasi atau tolak pembayaran
   async updateStatus(id: string, dto: UpdatePaymentStatusDto) {
     const payment = await this.prisma.payment.findUnique({ where: { id } });
 

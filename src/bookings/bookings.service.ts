@@ -21,6 +21,7 @@ export class BookingsService {
         email: true,
         phone_number: true,
         address: true,
+        province: true,
         city: true,
       },
     },
@@ -29,6 +30,7 @@ export class BookingsService {
         category: {
           select: { id: true, category_name: true },
         },
+        variants: true,
       },
     },
     provider: {
@@ -43,19 +45,33 @@ export class BookingsService {
   };
 
   async create(userId: string, dto: CreateBookingDto) {
-    // Cek service ada
     const service = await this.prisma.services.findUnique({
       where: { id: dto.services_id },
+      include: { variants: true },
     });
 
     if (!service) {
       throw new NotFoundException('Layanan tidak ditemukan');
     }
 
-    // Validasi schedule tidak boleh di masa lalu
     const scheduleDate = new Date(dto.schedule);
     if (scheduleDate <= new Date()) {
       throw new BadRequestException('Jadwal harus di masa depan');
+    }
+
+    // Jika service punya variant, variant_id wajib dikirim
+    let finalPrice = service.price;
+    if (service.variants.length > 0) {
+      if (!dto.variant_id) {
+        throw new BadRequestException(
+          'Layanan ini memiliki beberapa pilihan, harap pilih salah satu varian',
+        );
+      }
+      const variant = service.variants.find((v) => v.id === dto.variant_id);
+      if (!variant) {
+        throw new BadRequestException('Varian tidak ditemukan pada layanan ini');
+      }
+      finalPrice = variant.price;
     }
 
     const booking = await this.prisma.booking.create({
@@ -63,19 +79,37 @@ export class BookingsService {
         user_id: userId,
         services_id: dto.services_id,
         schedule: scheduleDate,
-        total_price: service.price,
+        total_price: finalPrice,
+        address: dto.address,
+        province: dto.province,
+        city: dto.city,
         status: 'PENDING',
       },
       include: this.bookingInclude,
     });
 
+    // Langsung buat payment record dengan status PENDING
+    await this.prisma.payment.create({
+      data: {
+        booking_id: booking.id,
+        method: dto.payment_method,
+        amount_to_pay: finalPrice,
+        status: 'PENDING',
+      },
+    });
+
+    // Reload booking dengan payment
+    const bookingWithPayment = await this.prisma.booking.findUnique({
+      where: { id: booking.id },
+      include: this.bookingInclude,
+    });
+
     return {
       message: 'Booking berhasil dibuat, menunggu konfirmasi admin',
-      data: booking,
+      data: bookingWithPayment,
     };
   }
 
-  // Admin: lihat semua booking
   async findAll(status?: string) {
     const bookings = await this.prisma.booking.findMany({
       where: status ? { status: status as any } : undefined,
@@ -89,7 +123,6 @@ export class BookingsService {
     };
   }
 
-  // Customer: lihat booking milik sendiri
   async findMyBookings(userId: string, status?: string) {
     const bookings = await this.prisma.booking.findMany({
       where: {
@@ -106,7 +139,6 @@ export class BookingsService {
     };
   }
 
-  // Teknisi: lihat tugas yang di-assign ke mereka
   async findMyTasks(technicianId: string, status?: string) {
     const tasks = await this.prisma.booking.findMany({
       where: {
@@ -133,12 +165,10 @@ export class BookingsService {
       throw new NotFoundException('Booking tidak ditemukan');
     }
 
-    // Customer hanya bisa lihat booking miliknya sendiri
     if (userRole === Role.CUSTOMER && booking.user_id !== userId) {
       throw new ForbiddenException('Kamu tidak punya akses ke booking ini');
     }
 
-    // Teknisi hanya bisa lihat booking yang di-assign ke mereka
     if (userRole === Role.TECHNICIAN && booking.provider_id !== userId) {
       throw new ForbiddenException('Booking ini tidak di-assign ke kamu');
     }
@@ -149,7 +179,6 @@ export class BookingsService {
     };
   }
 
-  // Admin: update status booking dan assign teknisi
   async updateStatus(id: string, dto: UpdateBookingStatusDto) {
     const booking = await this.prisma.booking.findUnique({ where: { id } });
 
@@ -157,7 +186,6 @@ export class BookingsService {
       throw new NotFoundException('Booking tidak ditemukan');
     }
 
-    // Validasi provider_id kalau dikirim, harus user dengan role TECHNICIAN
     if (dto.provider_id) {
       const technician = await this.prisma.user.findUnique({
         where: { id: dto.provider_id },
@@ -183,7 +211,6 @@ export class BookingsService {
     };
   }
 
-  // Teknisi: update status task mereka sendiri (ON_PROGRESS atau COMPLETED)
   async updateTaskStatus(bookingId: string, technicianId: string, status: 'ON_PROGRESS' | 'COMPLETED') {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -213,7 +240,6 @@ export class BookingsService {
     };
   }
 
-  // Customer: cancel booking
   async cancelBooking(id: string, userId: string) {
     const booking = await this.prisma.booking.findUnique({ where: { id } });
 

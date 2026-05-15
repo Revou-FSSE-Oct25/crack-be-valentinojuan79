@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -15,6 +15,10 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
   city?: string;
 
   @IsOptional()
@@ -24,4 +28,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   id_photo?: string;
+
+  @IsOptional()
+  @IsString()
+  specialities?: string;
 }

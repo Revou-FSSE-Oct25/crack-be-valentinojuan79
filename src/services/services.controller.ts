@@ -21,19 +21,16 @@ import { Role } from '@prisma/client';
 export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
-  // GET /services — Public, support filter by ?category_id=xxx
   @Get()
   findAll(@Query('category_id') categoryId?: string) {
     return this.servicesService.findAll(categoryId);
   }
 
-  // GET /services/:id — Public
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.servicesService.findOne(id);
   }
 
-  // POST /services — Admin only
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post()
@@ -41,7 +38,6 @@ export class ServicesController {
     return this.servicesService.create(dto);
   }
 
-  // PATCH /services/:id — Admin only
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')
@@ -49,7 +45,6 @@ export class ServicesController {
     return this.servicesService.update(id, dto);
   }
 
-  // DELETE /services/:id — Admin only
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Delete(':id')

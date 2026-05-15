@@ -22,10 +22,17 @@ export class RegisterDto {
   @IsEnum(UserRole, { message: 'Role hanya boleh CUSTOMER atau TECHNICIAN' })
   role?: UserRole;
 
-  // Field opsional — diisi teknisi saat register
   @IsOptional()
   @IsString()
   phone_number?: string;
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
 
   @IsOptional()
   @IsString()

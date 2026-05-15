@@ -21,28 +21,24 @@ import { Role } from '@prisma/client';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // POST /payments — Customer buat data pembayaran untuk booking yang sudah CONFIRMED
   @Roles(Role.CUSTOMER)
   @Post()
   create(@GetUser('userId') userId: string, @Body() dto: CreatePaymentDto) {
     return this.paymentsService.create(userId, dto);
   }
 
-  // GET /payments — Admin lihat semua pembayaran
   @Roles(Role.ADMIN)
   @Get()
   findAll() {
     return this.paymentsService.findAll();
   }
 
-  // GET /payments/my — Customer lihat riwayat pembayaran sendiri
   @Roles(Role.CUSTOMER)
   @Get('my')
   findMyPayments(@GetUser('userId') userId: string) {
     return this.paymentsService.findMyPayments(userId);
   }
 
-  // GET /payments/:id — Semua role, dengan pembatasan di service
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -52,7 +48,6 @@ export class PaymentsController {
     return this.paymentsService.findOne(id, userId, userRole);
   }
 
-  // PATCH /payments/:id/status — Admin konfirmasi atau tolak pembayaran
   @Roles(Role.ADMIN)
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdatePaymentStatusDto) {

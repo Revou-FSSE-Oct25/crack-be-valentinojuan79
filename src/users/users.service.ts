@@ -129,6 +129,7 @@ export class UsersService {
         email: true,
         phone_number: true,
         city: true,
+        specialities: true,
         assignedTasks: {
           where: {
             status: { in: ['CONFIRMED', 'ON_PROGRESS'] },

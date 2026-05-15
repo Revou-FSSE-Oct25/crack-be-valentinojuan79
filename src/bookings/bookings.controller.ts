@@ -3,10 +3,12 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -22,7 +24,6 @@ import { Role } from '@prisma/client';
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
-  // POST /bookings — Customer buat booking baru
   @Roles(Role.CUSTOMER)
   @Post()
   create(
@@ -32,14 +33,12 @@ export class BookingsController {
     return this.bookingsService.create(userId, dto);
   }
 
-  // GET /bookings — Admin lihat semua booking, support ?status=PENDING
   @Roles(Role.ADMIN)
   @Get()
   findAll(@Query('status') status?: string) {
     return this.bookingsService.findAll(status);
   }
 
-  // GET /bookings/my — Customer lihat booking mereka sendiri
   @Roles(Role.CUSTOMER)
   @Get('my')
   findMyBookings(
@@ -49,7 +48,6 @@ export class BookingsController {
     return this.bookingsService.findMyBookings(userId, status);
   }
 
-  // GET /bookings/tasks — Teknisi lihat tugas yang di-assign ke mereka
   @Roles(Role.TECHNICIAN)
   @Get('tasks')
   findMyTasks(
@@ -59,7 +57,6 @@ export class BookingsController {
     return this.bookingsService.findMyTasks(technicianId, status);
   }
 
-  // GET /bookings/:id — Semua role, tapi dengan pembatasan akses di service
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -69,7 +66,6 @@ export class BookingsController {
     return this.bookingsService.findOne(id, userId, userRole);
   }
 
-  // PATCH /bookings/:id/status — Admin update status & assign teknisi
   @Roles(Role.ADMIN)
   @Patch(':id/status')
   updateStatus(
@@ -79,18 +75,19 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, dto);
   }
 
-  // PATCH /bookings/:id/progress — Teknisi update status tugas mereka
   @Roles(Role.TECHNICIAN)
   @Patch(':id/progress')
   updateTaskStatus(
     @Param('id') bookingId: string,
     @GetUser('userId') technicianId: string,
-    @Body('status') status: 'ON_PROGRESS' | 'COMPLETED',
+    @Body('status') status: string,
   ) {
-    return this.bookingsService.updateTaskStatus(bookingId, technicianId, status);
+    if (!['ON_PROGRESS', 'COMPLETED'].includes(status)) {
+      throw new BadRequestException('Status harus ON_PROGRESS atau COMPLETED');
+    }
+    return this.bookingsService.updateTaskStatus(bookingId, technicianId, status as 'ON_PROGRESS' | 'COMPLETED');
   }
 
-  // PATCH /bookings/:id/cancel — Customer cancel booking
   @Roles(Role.CUSTOMER)
   @Patch(':id/cancel')
   cancelBooking(
@@ -99,4 +96,5 @@ export class BookingsController {
   ) {
     return this.bookingsService.cancelBooking(id, userId);
   }
+
 }

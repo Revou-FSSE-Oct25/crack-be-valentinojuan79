@@ -20,10 +20,7 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  /**
-   * Endpoint Testing: Mengecek profil user yang sedang login
-   * Endpoint ini diproteksi oleh JwtAuthGuard
-   */
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getProfile(@Request() req) {

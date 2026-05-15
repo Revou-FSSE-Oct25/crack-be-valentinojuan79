@@ -7,21 +7,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   imports: [
-    // PassportModule diperlukan untuk integrasi dengan passport-jwt
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    
-    // Konfigurasi JWT menggunakan secret dari .env kamu
     JwtModule.registerAsync({
       useFactory: () => ({
-        secret: process.env.JWT_SECRET || 'fallback_secret', // Gunakan fallback jika env belum terbaca
+        secret: process.env.JWT_SECRET || 'fallback_secret',
         signOptions: { 
-          expiresIn: '24h', // Token berlaku selama 24 jam
+          expiresIn: '24h',
         },
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy], // PrismaService otomatis masuk lewat @Global() PrismaModule
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService, JwtStrategy, PassportModule], // Export jika module lain butuh mengecek auth
+  exports: [AuthService, JwtStrategy, PassportModule],
 })
 export class AuthModule {}

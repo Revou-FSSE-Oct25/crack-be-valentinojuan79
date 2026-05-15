@@ -20,40 +20,34 @@ import { Role } from '@prisma/client';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // GET /users — Admin only
   @Get()
   @Roles(Role.ADMIN)
   findAll() {
     return this.usersService.findAll();
   }
 
-  // GET /users/me — Semua user yang sudah login
   @Get('me')
   getProfile(@GetUser('userId') userId: string) {
     return this.usersService.getProfile(userId);
   }
 
-  // PATCH /users/me — Update profil sendiri
   @Patch('me')
   updateProfile(@GetUser('userId') userId: string, @Body() dto: UpdateUserDto) {
     return this.usersService.updateProfile(userId, dto);
   }
 
-  // GET /users/technicians — Admin only, untuk assign teknisi ke booking
   @Get('technicians')
   @Roles(Role.ADMIN)
   findTechnicians() {
     return this.usersService.findTechnicians();
   }
 
-  // GET /users/:id — Admin only
   @Get(':id')
   @Roles(Role.ADMIN)
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
-  // DELETE /users/:id — Admin only
   @Delete(':id')
   @Roles(Role.ADMIN)
   deleteUser(@Param('id') id: string) {

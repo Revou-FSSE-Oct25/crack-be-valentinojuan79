@@ -11,8 +11,16 @@ import { UpdateServiceDto } from './dto/update-service.dto';
 export class ServicesService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly serviceInclude = {
+    category: {
+      select: { id: true, category_name: true },
+    },
+    variants: {
+      orderBy: { price: 'asc' as const },
+    },
+  };
+
   async create(dto: CreateServiceDto) {
-    // Validasi: pastikan category_id yang dikirim memang ada
     const category = await this.prisma.category.findUnique({
       where: { id: dto.category_id },
     });
@@ -27,11 +35,7 @@ export class ServicesService {
         price: dto.price,
         category_id: dto.category_id,
       },
-      include: {
-        category: {
-          select: { id: true, category_name: true },
-        },
-      },
+      include: this.serviceInclude,
     });
 
     return {
@@ -43,11 +47,7 @@ export class ServicesService {
   async findAll(categoryId?: string) {
     const services = await this.prisma.services.findMany({
       where: categoryId ? { category_id: categoryId } : undefined,
-      include: {
-        category: {
-          select: { id: true, category_name: true },
-        },
-      },
+      include: this.serviceInclude,
       orderBy: { services_name: 'asc' },
     });
 
@@ -60,11 +60,7 @@ export class ServicesService {
   async findOne(id: string) {
     const service = await this.prisma.services.findUnique({
       where: { id },
-      include: {
-        category: {
-          select: { id: true, category_name: true },
-        },
-      },
+      include: this.serviceInclude,
     });
 
     if (!service) {
@@ -84,7 +80,6 @@ export class ServicesService {
       throw new NotFoundException('Layanan tidak ditemukan');
     }
 
-    // Kalau category_id diubah, validasi dulu category barunya ada
     if (dto.category_id) {
       const category = await this.prisma.category.findUnique({
         where: { id: dto.category_id },
@@ -98,11 +93,7 @@ export class ServicesService {
     const updated = await this.prisma.services.update({
       where: { id },
       data: dto,
-      include: {
-        category: {
-          select: { id: true, category_name: true },
-        },
-      },
+      include: this.serviceInclude,
     });
 
     return {

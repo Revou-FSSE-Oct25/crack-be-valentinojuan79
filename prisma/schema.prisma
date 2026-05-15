@@ -36,6 +36,7 @@ model User {
   password      String
   phone_number  String?
   address       String?
+  province      String?
   city          String?
   id_number     String?   
   id_photo      String?
@@ -75,6 +76,9 @@ model Booking {
   status        BookingStatus @default(PENDING)
   schedule      DateTime      
   total_price   Float
+  address       String?
+  province      String?
+  city          String?
   user_id       String
   user          User          @relation("UserBookings", fields: [user_id], references: [id])
   services_id   String
